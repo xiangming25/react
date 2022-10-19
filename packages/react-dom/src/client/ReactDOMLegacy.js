@@ -149,6 +149,7 @@ function legacyCreateRootFromDOMContainer(
   } else {
     // First clear any existing content.
     let rootSibling;
+    // FIXME: ==== 为什么首次进来要删掉已经存在的内容 ====
     while ((rootSibling = container.lastChild)) {
       container.removeChild(rootSibling);
     }
@@ -212,10 +213,11 @@ function legacyRenderSubtreeIntoContainer(
     warnOnInvalidCallback(callback === undefined ? null : callback, 'render');
   }
 
+  // FIXME: ==== 这个方法除了第一次调用还会在哪里调用 ====
   const maybeRoot = container._reactRootContainer;
   let root: FiberRoot;
   if (!maybeRoot) {
-    // Initial mount
+    // 首将进入执行方法
     root = legacyCreateRootFromDOMContainer(
       container,
       children,

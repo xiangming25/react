@@ -216,6 +216,7 @@ const createFiber = function(
   key: null | string,
   mode: TypeOfMode,
 ): Fiber {
+  // FIXME: ==== 这里只创建了一个 Fiber 节点吗？ ====
   // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
   return new FiberNode(tag, pendingProps, key, mode);
 };

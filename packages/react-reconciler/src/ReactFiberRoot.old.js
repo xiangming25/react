@@ -95,6 +95,7 @@ function FiberRootNode(
   }
 
   this.incompleteTransitions = new Map();
+  // FIXME: ==== enableTransitionTracing 的作用是什么 ====
   if (enableTransitionTracing) {
     this.transitionCallbacks = null;
     const transitionLanesMap = (this.transitionLanes = []);
@@ -166,6 +167,7 @@ export function createFiberRoot(
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
   );
+  // FIXME: ==== 双缓存让第一次进来时，current 指向了 rootFiber。但是生成的节点是如何在浏览器中渲染的呢？ ====
   root.current = uninitializedFiber;
   uninitializedFiber.stateNode = root;
 
