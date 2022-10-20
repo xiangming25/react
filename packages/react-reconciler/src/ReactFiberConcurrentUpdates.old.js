@@ -183,6 +183,7 @@ function markUpdateLaneFromFiberToRoot(
   lane: Lane,
 ): void {
   // Update the source fiber's lanes
+  // 更新当前节点的 lanes，表示当前节点需要更新
   sourceFiber.lanes = mergeLanes(sourceFiber.lanes, lane);
   let alternate = sourceFiber.alternate;
   if (alternate !== null) {
@@ -190,6 +191,8 @@ function markUpdateLaneFromFiberToRoot(
   }
   // Walk the parent path to the root and update the child lanes.
   let isHidden = false;
+  // 从当前需要更新的 fiber 节点向上遍历直到根 fiber 节点（root fiber），更新每个 fiber 节点的 childLanes
+  // 在之后会通过 childLanes 来判断当前 fiber 节点下是否有子节点需要更新
   let parent = sourceFiber.return;
   let node = sourceFiber;
   while (parent !== null) {
