@@ -59,6 +59,7 @@ export function flushSyncCallbacks(): null {
       const queue = syncQueue;
       // TODO: Is this necessary anymore? The only user code that runs in this
       // queue is in the render or commit phases.
+      // FIXME: ======== 哪些操作会进入这里 ========
       setCurrentUpdatePriority(DiscreteEventPriority);
       for (; i < queue.length; i++) {
         let callback = queue[i];

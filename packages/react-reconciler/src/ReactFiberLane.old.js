@@ -31,6 +31,7 @@ import {clz32} from './clz32';
 // Lane values below should be kept in sync with getLabelForLane(), used by react-devtools-timeline.
 // If those values are changed that package should be rebuilt and redeployed.
 
+// lane使用31位二进制来表示优先级车道共31条, 位数越小（1的位置越靠右）表示优先级越高
 export const TotalLanes = 31;
 
 export const NoLanes: Lanes = /*                        */ 0b0000000000000000000000000000000;
@@ -188,6 +189,7 @@ function getHighestPriorityLanes(lanes: Lanes | Lane): Lanes {
 export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   // Early bailout if there's no pending work left.
   const pendingLanes = root.pendingLanes;
+  // 没有剩余任务的时候，跳出更新
   if (pendingLanes === NoLanes) {
     return NoLanes;
   }
@@ -407,11 +409,34 @@ export function markStarvedLanesAsExpired(
   // We exclude retry lanes because those must always be time sliced, in order
   // to unwrap uncached promises.
   // TODO: Write a test for this
+  /**
+   * 将要执行的任务根据它们的优先级生成一个过期时间
+   * 当某个任务过期了，则将任务的 lane 添加到 expiredLanes 过期 lanes 上
+   * 在后续执行任务的时候，会通过检查当前任务的 lane 是否存在于 expiredLanes 上
+   * 如果存在的话，则会将该任务以同步模式去执行，避免任务饥饿问题
+   * PS：什么是饥饿问题？
+   * 饥饿问题是指当执行一个任务时，不断地插入比该任务优先级高的任务
+   * 那么这个任务一直得不到执行
+   */
   let lanes = pendingLanes & ~RetryLanes;
   while (lanes > 0) {
+    // 获取当前lanes中最左边1的位置
+    // 例如：
+    // lanes = 28 = 0b0000000000000000000000000011100
+    // 以32位正常看的话，最左边的1应该是在5的位置上
+    // 但是lanes设置了总长度为31，所以我们可以也减1，看作在4的位置上
+    // 如果这样不好理解的话，可以看pickArbitraryLaneIndex中的源码：
+    // 31 - clz32(lanes), clz32是Math中的一个API，获取的是最左边1前面的所有0的个数
     const index = pickArbitraryLaneIndex(lanes);
+    // 上面获取到最左边1的位置后，还需要获取到这个位置上的值
+    // index = 4
+    // 16 = 10000 = 1 << 4
     const lane = 1 << index;
 
+    /** 
+     * 获取当前位置上任务的过期时间，如果没有则会根据任务的优先级创建一个过期时间
+     * 如果有则会判断任务是否过期，过期了则会将当前任务的 lane 添加到 expiredLanes 上
+     */
     const expirationTime = expirationTimes[index];
     if (expirationTime === NoTimestamp) {
       // Found a pending lane with no expiration time. If it's not suspended, or
@@ -426,6 +451,12 @@ export function markStarvedLanesAsExpired(
       }
     } else if (expirationTime <= currentTime) {
       // This lane expired
+      // 从lanes中删除lane, 每次循环删除一个，直到lanes等于0
+      // 例如：
+      // lane = 16 =  10000
+      // ~lane =      01111
+      // lanes = 28 = 11100
+      // lanes = 12 = 01100 = lanes & ~lane
       root.expiredLanes |= lane;
     }
 
@@ -590,6 +621,7 @@ export function markRootUpdated(
   updateLane: Lane,
   eventTime: number,
 ) {
+  // 将当前需要更新的 lane 添加到 fiber root 的 pendingLanes 属性上
   root.pendingLanes |= updateLane;
 
   // If there are any suspended transitions, it's possible this new update
