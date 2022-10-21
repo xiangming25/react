@@ -868,10 +868,16 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
     root === workInProgressRoot ? workInProgressRootRenderLanes : NoLanes,
   );
 
-  // 如果 nextLanes 为空则表示没有任务需要执行，则直接中断更新
+  // 如果 nextLanes 为空则表示没有任务需要执行，则直接中断更新（就算这个任务执行了但是也做不了任何更新，所以需要取消掉）
   if (nextLanes === NoLanes) {
     // Special case: There's nothing to work on.
+    // existingCallbackNode 不为空表示有任务使用了 concurrent 模式被 shceduler 调用，但是还未执行
     if (existingCallbackNode !== null) {
+      /**
+       * 使用 cancelCallback 会将任务的 callback 置为 null
+       * 在 scheduler 循环 taskQueue 时，会检查 当前 task 的 callback 是否为 null
+       * 为 null 则从 taskQueue 中删除，不会执行
+       */
       cancelCallback(existingCallbackNode);
     }
     root.callbackNode = null;
@@ -884,7 +890,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
 
   // Check if there's an existing task. We may be able to reuse it.
   /**
-   * nextLanes 获取的所有任务中优先级最高任务的 lanee
+   * nextLanes 获取的所有任务中优先级最高任务的 lane
    * 那么与当前现有任务的优先级比较，只会有两种结果
    * 1. 与现有的任务优先级一样，那么则会中断当前新任务向下的执行，重用之前现在的任务
    * 2. 新任务的优先级大于现在的任务优先级，那么则会取消现有的任务的执行，优先执行优先级高的任务
@@ -930,7 +936,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
 
   // Schedule a new callback.
   /**
-   * 开始高度任务
+   * 开始调度任务
    * 判断新任务的优先级是否是同步优先级
    * 是则使用同步渲染模式，否则使用并发渲染模式（时间分片）
    */
@@ -976,7 +982,8 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
     newCallbackNode = null;
   } else {
     let schedulerPriorityLevel;
-    // React 事件优先级转换为 Scheduler 优先级
+    // lanesToEventPriority 寒素将 lane 的优先级转换为 React 事件的优先级
+    // 然后根据 React 事件优先级转换为 Scheduler 优先级
     switch (lanesToEventPriority(nextLanes)) {
       case DiscreteEventPriority:
         schedulerPriorityLevel = ImmediateSchedulerPriority;
@@ -994,6 +1001,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
         schedulerPriorityLevel = NormalSchedulerPriority;
         break;
     }
+    // 将 react 与 scheduler 连接，将 react 产生的事件作为任务使用 scheduler 调度
     newCallbackNode = scheduleCallback(
       schedulerPriorityLevel,
       performConcurrentWorkOnRoot.bind(null, root),

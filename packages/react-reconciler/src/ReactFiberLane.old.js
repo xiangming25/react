@@ -190,6 +190,10 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   // Early bailout if there's no pending work left.
   const pendingLanes = root.pendingLanes;
   // 没有剩余任务的时候，跳出更新
+  /**
+   * pendingLanes 上保存了所有将要执行的任务 lane
+   * 如果 pendingLanes 为空，则表示没有剩余任务的时候，跳出更新
+   */
   if (pendingLanes === NoLanes) {
     return NoLanes;
   }
@@ -201,12 +205,28 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
 
   // Do not work on any idle work until all the non-idle work has finished,
   // even if the work is suspended.
+  /**
+   * 在将要处理的任务中检查 是否有未闲置的任务，如果有的话则需要先执行未闲置的任务，不能执行挂起任务
+   * // 例如：
+  // 当前pendingLanes为: 17 = 0b0000000000000000000000000010001
+  // NonIdleLanes          = 0b0001111111111111111111111111111
+  // 结果为:                = 0b0000000000000000000000000010001 = 17
+   */
   const nonIdlePendingLanes = pendingLanes & NonIdleLanes;
+  // 检查是否还有未新闲置且将要执行的任务
   if (nonIdlePendingLanes !== NoLanes) {
+    /**
+     * 检查未闲置的任务中除去挂起的任务，是否还有未被阻塞的任务，有的话则需要从这些未消被阻塞的任务中找出任务优先级最高的去执行
+     * & ~suspendedLanes 相当于从 nonIdlePendingLanes 中删除 suspendedLanes
+     */
     const nonIdleUnblockedLanes = nonIdlePendingLanes & ~suspendedLanes;
     if (nonIdleUnblockedLanes !== NoLanes) {
       nextLanes = getHighestPriorityLanes(nonIdleUnblockedLanes);
     } else {
+      /**
+       * nonIdlePingedLanes（未消闲置且未阻塞的任务）是未闲置任务中除去挂起的任务剩下来的
+       * 如果 nonIdlePingedLanes 为空，那么则是从剩下来的，也就是挂起的任务中找到优先级最高的来执行
+       */
       const nonIdlePingedLanes = nonIdlePendingLanes & pingedLanes;
       if (nonIdlePingedLanes !== NoLanes) {
         nextLanes = getHighestPriorityLanes(nonIdlePingedLanes);
@@ -214,10 +234,18 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
     }
   } else {
     // The only remaining work is Idle.
+    /**
+     * 剩下折任务都是闲置的
+     * 找出未补阻塞的任务，然后从中找出优先级最高的执行
+     */
     const unblockedLanes = pendingLanes & ~suspendedLanes;
     if (unblockedLanes !== NoLanes) {
       nextLanes = getHighestPriorityLanes(unblockedLanes);
     } else {
+      /**
+       * 进入到这里，表示目前的任务中已经没有了未被阻塞的任务
+       * 需要从挂起的任务中找出任务优先级最高的来执行
+       */
       if (pingedLanes !== NoLanes) {
         nextLanes = getHighestPriorityLanes(pingedLanes);
       }
@@ -233,6 +261,12 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   // If we're already in the middle of a render, switching lanes will interrupt
   // it and we'll lose our progress. We should only do this if the new lanes are
   // higher priority.
+  /**
+   * wipLanes 是正在执行任务的 lane,nextLanes 是本次需要执行的任务 lane
+   * wiplanes !== NoLanes，wipLanes 不为空，表示有任务正在执行
+   * 如果正在渲染，突然新添加了一个任务，但是这个新任务比正在执行的优先级低，那么则不会去管它，继续渲染
+   * 如果新任务的优先级比正在执行的任务高，那么则取消当前任务，执行新任务
+   */
   if (
     wipLanes !== NoLanes &&
     wipLanes !== nextLanes &&
