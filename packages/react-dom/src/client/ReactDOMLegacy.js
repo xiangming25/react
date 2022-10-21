@@ -162,6 +162,7 @@ function legacyCreateRootFromDOMContainer(
       };
     }
 
+    // 创建容器根节点
     const root = createContainer(
       container,
       LegacyRoot,
@@ -217,7 +218,7 @@ function legacyRenderSubtreeIntoContainer(
   const maybeRoot = container._reactRootContainer;
   let root: FiberRoot;
   if (!maybeRoot) {
-    // 首将进入执行方法
+    // 创建容器 Fiber 根节点
     root = legacyCreateRootFromDOMContainer(
       container,
       children,

@@ -145,6 +145,7 @@ export function createFiberRoot(
   onRecoverableError: null | ((error: mixed) => void),
   transitionCallbacks: null | TransitionTracingCallbacks,
 ): FiberRoot {
+  // 创建 fiber root 根节点，在 react 项目中 fiber root 根节点只存在一个
   const root: FiberRoot = (new FiberRootNode(
     containerInfo,
     tag,
@@ -162,13 +163,18 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
+  // 创建 root fiber，可以是多个
   const uninitializedFiber = createHostRootFiber(
     tag,
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
   );
   // FIXME: ==== 双缓存让第一次进来时，current 指向了 rootFiber。但是生成的节点是如何在浏览器中渲染的呢？ ====
+  // 用 current 将 FiberRoot 和 RootFiber 相关联
   root.current = uninitializedFiber;
+  // 使用 stateNode 关联了 FiberRoot 实例。
+  // rootFiber 可以看做是 render 内容的根节点
+  // FIXME: ======== 这里 FiberRoot 关联了 rootFiber，rootFiber 又通过 stateNode 关联了 FiberRoot。是怎么避免死循环嵌套的？ ========
   uninitializedFiber.stateNode = root;
 
   if (enableCache) {
