@@ -3837,6 +3837,7 @@ function attemptEarlyBailoutIfNoScheduledUpdate(
   return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
 }
 
+// 判断节点是否需要更新
 function beginWork(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -3864,6 +3865,7 @@ function beginWork(
     const oldProps = current.memoizedProps;
     const newProps = workInProgress.pendingProps;
 
+    // didReceiveUpdate 表示是否有新的 props 更新，有则会设置为 true，没有则为 false
     if (
       oldProps !== newProps ||
       hasLegacyContextChanged() ||
@@ -3876,6 +3878,8 @@ function beginWork(
     } else {
       // Neither props nor legacy context changes. Check if there's a pending
       // update or context change.
+      // checkScheduledUpdateOrContext 函数检查当前 fiber 节点上的 lanes 是否存在于 renderLanes 中
+      // 存在则说明当前 fiber 节点需要更新，不存在则不需要更新则复用之前的节点
       const hasScheduledUpdateOrContext = checkScheduledUpdateOrContext(
         current,
         renderLanes,
@@ -3888,6 +3892,7 @@ function beginWork(
       ) {
         // No pending updates or context. Bail out now.
         didReceiveUpdate = false;
+        // 复用之前的节点
         return attemptEarlyBailoutIfNoScheduledUpdate(
           current,
           workInProgress,

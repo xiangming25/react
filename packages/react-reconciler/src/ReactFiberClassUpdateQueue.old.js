@@ -552,6 +552,8 @@ export function processUpdateQueue<State>(
         ? !isSubsetOfLanes(getWorkInProgressRootRenderLanes(), updateLane)
         : !isSubsetOfLanes(renderLanes, updateLane);
 
+        // 判断更新对象上挂载的 lane 是否在 renderLanes 上，如果在，则表示当前更新对象需要做更新操作
+        // 如果不在，则说明不需要，则直接重用跳过该更新对象
       if (shouldSkipUpdate) {
         // Priority is insufficient. Skip this update. If this is the first
         // skipped update, the previous update/state is the new base

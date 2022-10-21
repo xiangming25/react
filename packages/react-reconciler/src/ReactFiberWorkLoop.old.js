@@ -1047,6 +1047,12 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
 
   // Determine the next lanes to work on, using the fields stored
   // on the root.
+  /**
+   * 从所有待执行的任务中，找出优先级最高的任务
+   * 这里又调用了一次 getNextLanes。在执行任务前，可能又产生了一个新的任务，这个新的任务的优先级如果比将要执行的任务的优先级低，则不继续渲染。
+   * 但是如果比将要执行的任务的优先级高，那么则需要先执行这个优先级高的任务。
+   * 在每次执行任务的时候调用 getNextLanes 方法，就是为了在任务时候都要保证执行的任务的是优先级最高的。
+   */
   let lanes = getNextLanes(
     root,
     root === workInProgressRoot ? workInProgressRootRenderLanes : NoLanes,
@@ -1062,6 +1068,10 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
   // TODO: We only check `didTimeout` defensively, to account for a Scheduler
   // bug we're still investigating. Once the bug in Scheduler is fixed,
   // we can remove this, since we track expiration ourselves.
+  /**
+   * shouldTimeSlice 函数根据 lane 的优先级，决定是使用并发模式还是同步械渲染（解决饥饿问题）
+   * disTimeout 判断当前任务是否超时
+   */
   const shouldTimeSlice =
     !includesBlockingLane(root, lanes) &&
     !includesExpiredLane(root, lanes) &&
@@ -1687,6 +1697,7 @@ export function flushControlled(fn: () => mixed): void {
 // place that ever modifies it. Which module it lives in doesn't matter for
 // performance because this function will get inlined regardless
 export function setRenderLanes(subtreeRenderLanes: Lanes) {
+  // subTreeRenderLanes 表示需要更新的 fiber 节点的 lane 的集合，在后面更新 fiber 节点的时候会根据这个值判断是否需要更新
   renderLanes = subtreeRenderLanes;
 }
 
@@ -1724,8 +1735,10 @@ function prepareFreshStack(root: FiberRoot, lanes: Lanes): Fiber {
     resetThenableStateOnCompletion();
   }
   workInProgressRoot = root;
+  // 创建 workInProgress 树
   const rootWorkInProgress = createWorkInProgress(root.current, null);
   workInProgress = rootWorkInProgress;
+  // 当前是否有任务正在执行，有值表示有任务正在执行，反之则没有任务正在执行
   workInProgressRootRenderLanes = renderLanes = lanes;
   workInProgressIsSuspended = false;
   workInProgressThrownValue = null;
@@ -2414,6 +2427,7 @@ function commitRootImpl(
 
   // Check which lanes no longer have any work scheduled on them, and mark
   // those as finished.
+  // 获取到剩下还需要做更新的 lanes
   let remainingLanes = mergeLanes(finishedWork.lanes, finishedWork.childLanes);
 
   // Make sure to account for lanes that were updated by a concurrent event
@@ -2421,6 +2435,7 @@ function commitRootImpl(
   const concurrentlyUpdatedLanes = getConcurrentlyUpdatedLanes();
   remainingLanes = mergeLanes(remainingLanes, concurrentlyUpdatedLanes);
 
+  // 清空掉已经执行完成的 lanes 的数据
   markRootFinished(root, remainingLanes);
 
   if (root === workInProgressRoot) {

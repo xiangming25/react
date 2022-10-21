@@ -1038,6 +1038,7 @@ function resumeMountClassInstance(
 }
 
 // Invokes the update life-cycles and returns false if it shouldn't rerender.
+// 作用是根据更新对象上的 lane 判断是否需要更新状态，以及调用一些渲染前的生命周期：geetDerivedStateFromProps、componentWillUpdate 等
 function updateClassInstance(
   current: Fiber,
   workInProgress: Fiber,

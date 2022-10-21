@@ -542,6 +542,10 @@ export function includesOnlyTransitions(lanes: Lanes): boolean {
 }
 
 export function includesBlockingLane(root: FiberRoot, lanes: Lanes): boolean {
+  /**
+   * 检查当前是否开户并发械和当前使用的渲染模式是否并发械
+   * 如果是则返回 true，使用并发渲染
+   */
   if (
     allowConcurrentByDefault &&
     (root.current.mode & ConcurrentUpdatesByDefaultMode) !== NoMode
@@ -549,6 +553,13 @@ export function includesBlockingLane(root: FiberRoot, lanes: Lanes): boolean {
     // Concurrent updates by default always use time slicing.
     return false;
   }
+  /**
+   * 检查当前 lane 是否与 syncDefaultLanes 有交集
+   * 如果有，则会启用同步渲染模式，反之则使用并发模式渲染
+   * InputContinuousHydrationLane  InputContinuousLane  DefaultHydrationLane  DefaultLane
+   * 这四个 lane 都是需要使用同步模式执行的
+   * 同步模式执行是无法被打断的，直到执行完成，这样任务饥饿问题就相应的被解决了。
+   */
   const SyncDefaultLanes =
     InputContinuousHydrationLane |
     InputContinuousLane |
@@ -560,6 +571,10 @@ export function includesBlockingLane(root: FiberRoot, lanes: Lanes): boolean {
 export function includesExpiredLane(root: FiberRoot, lanes: Lanes): boolean {
   // This is a separate check from includesBlockingLane because a lane can
   // expire after a render has already started.
+  /**
+   * 检查当前任务的 lane 是否已经在过期的 lane 中
+   * 如果在，则为了防止饥饿问题，则会返回 false，执行同步渲染
+   */
   return (lanes & root.expiredLanes) !== NoLanes;
 }
 
@@ -712,14 +727,17 @@ export function markRootMutableRead(root: FiberRoot, updateLane: Lane) {
 }
 
 export function markRootFinished(root: FiberRoot, remainingLanes: Lanes) {
+  // 从 pendingLanes 中删除还未执行的Lanes，那么就找到了已经执行的 Lanes
   const noLongerPendingLanes = root.pendingLanes & ~remainingLanes;
 
+  // 将剩下的 lanes 重新挂载到 pendingLanes，准备下一次的执行
   root.pendingLanes = remainingLanes;
 
   // Let's try everything again
   root.suspendedLanes = NoLanes;
   root.pingedLanes = NoLanes;
 
+  // 从expiredLanes， mutableReadLanes， entangledLanes中删除掉已经执行的lanes
   root.expiredLanes &= remainingLanes;
   root.mutableReadLanes &= remainingLanes;
 
@@ -733,6 +751,8 @@ export function markRootFinished(root: FiberRoot, remainingLanes: Lanes) {
   const hiddenUpdates = root.hiddenUpdates;
 
   // Clear the lanes that no longer have pending work
+  // 取出已经执行的 lane,清空它们所有的数据
+  // eventTimes 中的事件触发时间，expirationTimes 中的任务过期时间等
   let lanes = noLongerPendingLanes;
   while (lanes > 0) {
     const index = pickArbitraryLaneIndex(lanes);
