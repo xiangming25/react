@@ -304,6 +304,7 @@ export function reconcileChildren(
   nextChildren: any,
   renderLanes: Lanes,
 ) {
+  // current === null，说明是创建，不是更新，调用 mountChildFibers 函数根据子元素创建 Fiber
   if (current === null) {
     // If this is a fresh new component that hasn't been rendered yet, we
     // won't update its child set by applying minimal side-effects. Instead,
@@ -322,11 +323,12 @@ export function reconcileChildren(
 
     // If we had any progressed work already, that is invalid at this point so
     // let's throw it out.
+    // 对 current 和 workInProgress 树进行 diff 算法对比，找出差异部分
     workInProgress.child = reconcileChildFibers(
-      workInProgress,
-      current.child,
-      nextChildren,
-      renderLanes,
+      workInProgress, // workInProgress 树上的 Fiber 节点
+      current.child,  // current 树上的当前 Fiber 的子节点
+      nextChildren, // 使用最新数据生成的 React element 元素
+      renderLanes,  // 渲染的 lane 优先级集合
     );
   }
 }
