@@ -2115,6 +2115,7 @@ function performUnitOfWork(unitOfWork: Fiber): void {
   const current = unitOfWork.alternate;
   setCurrentDebugFiberInDEV(unitOfWork);
 
+  // beginWork的主要工作，则是从root fiber开始向下深度遍历构建workInprogress树，进行diff算法确定需要更新的fiber的最终状态。
   let next;
   if (enableProfilerTimer && (unitOfWork.mode & ProfileMode) !== NoMode) {
     startProfilerTimer(unitOfWork);

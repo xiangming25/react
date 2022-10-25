@@ -1005,6 +1005,7 @@ function completeWork(
 
           appendAllChildren(instance, workInProgress, false, false);
 
+          // 在这里直接修改 workInProgress 的stateNode，以便在其它地方直接使用
           workInProgress.stateNode = instance;
 
           // Certain renderers require commit-time effects for initial mount.

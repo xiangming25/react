@@ -1233,12 +1233,19 @@ function updateClassComponent(
 
   const instance = workInProgress.stateNode;
   let shouldUpdate;
+  // 根据组件 stateNode（组件实例）的值是否为 null，以此来判断应该创建组件还是更新组件
   if (instance === null) {
     resetSuspendedCurrentOnMountInLegacyMode(current, workInProgress);
 
     // In the initial pass we might need to construct the instance.
+    // 实例化组件，将组件实例与对应的 fiber 节点关联
     constructClassInstance(workInProgress, Component, nextProps);
+    // 将 fiber 上的 state 和 props 更新至组件上
+    // 并且会检查是否声明了 getDervedStateFromProps 生命周期
+    // 有的话则会调用并且使用 getDerivedStateFromProps 生命周期函数中返回的 state 来更新组件实例上的 state
+    // 检查是否声明了 componentDidMount 生命周期，有的话则会收集标示添加到 fiber 的 flags 属性上
     mountClassInstance(workInProgress, Component, nextProps, renderLanes);
+    // 创建组件肯定是需要更新的，所以直接为 shouldUpdate 赋值为 true
     shouldUpdate = true;
   } else if (current === null) {
     // In a resume, we'll already have an instance we can reuse.
@@ -1249,6 +1256,14 @@ function updateClassComponent(
       renderLanes,
     );
   } else {
+    /**
+     * 更新组件 updateClassInstance 函数
+     * 调用生命周期 getDerivedStateFromProps、componentWillReceiveProps、shouldComponentUpdate、componentWillUpdate
+     * 执行更新队列，把将要更新的 state 的值与老的 state 的值进行合并，合并完成后会把新的 state 的值挂载到 workInProgress.memoizedState属性上
+     * 使用新的值分别更新组件实例中的 props，state 的值
+     * 收集 Effect，会判断当前类组件是否声明了生命周期函数：componentDidUpdate，getSnapshotBeforeUpdate
+     * 声明了则会将相对应的 flag 添加到当前 fiber 节点的 flags 属性上
+     */
     shouldUpdate = updateClassInstance(
       current,
       workInProgress,
@@ -1257,6 +1272,12 @@ function updateClassComponent(
       renderLanes,
     );
   }
+  /**
+   * finishClassComponent 函数：不管是更新还是创建，最终都会调用这个函数
+   * 判断生命周期 shouldComponentUpdate 返回的值，为 false 的话，则复用之前的 fiber 节点
+   * 为 true 则会调用 render 函数，获取使用最新的 state 和 props 生成的 React Element
+   * 调用 reconcileChildren 函数，这个函数主要作用是进行 diff 算法
+   */
   const nextUnitOfWork = finishClassComponent(
     current,
     workInProgress,
@@ -1290,10 +1311,12 @@ function finishClassComponent(
   renderLanes: Lanes,
 ) {
   // Refs should update even if shouldComponentUpdate returns false
+  // 判断是否有 ref，有的话则会收集 flag 到 flags 上，在 commit 阶段执行
   markRef(current, workInProgress);
 
   const didCaptureError = (workInProgress.flags & DidCapture) !== NoFlags;
 
+  // 判断 shouldUpdate 为 false 的话，则复用之前的 fiber 节点
   if (!shouldUpdate && !didCaptureError) {
     // Context providers should defer to sCU for rendering
     if (hasContext) {
@@ -1342,6 +1365,7 @@ function finishClassComponent(
       }
       setIsRendering(false);
     } else {
+      // 调用组件 render 方法获取到 react element
       nextChildren = instance.render();
     }
     if (enableSchedulingProfiler) {
@@ -1363,6 +1387,7 @@ function finishClassComponent(
       renderLanes,
     );
   } else {
+    // diff 算法
     reconcileChildren(current, workInProgress, nextChildren, renderLanes);
   }
 
@@ -3838,6 +3863,7 @@ function attemptEarlyBailoutIfNoScheduledUpdate(
 }
 
 // 判断节点是否需要更新
+// 主要工作是从 root fiber 开始向下尝试遍历构建 workInprogress 树，进行 diff算法确定需要更新的 fiber 的最终状态
 function beginWork(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -3861,9 +3887,10 @@ function beginWork(
     }
   }
 
+  // 判断 current 是否为 null，不为 null 表示更新，为 null 则表示创建
   if (current !== null) {
-    const oldProps = current.memoizedProps;
-    const newProps = workInProgress.pendingProps;
+    const oldProps = current.memoizedProps; // 上一次更新的 props
+    const newProps = workInProgress.pendingProps; // 这一次更新的 props
 
     // didReceiveUpdate 表示是否有新的 props 更新，有则会设置为 true，没有则为 false
     if (
