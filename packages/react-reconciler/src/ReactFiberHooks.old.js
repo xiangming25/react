@@ -395,6 +395,7 @@ export function renderWithHooks<Props, SecondArg>(
   secondArg: SecondArg,
   nextRenderLanes: Lanes,
 ): any {
+  // 是全局变量，在后面调用 hooks 函数时使用
   renderLanes = nextRenderLanes;
   currentlyRenderingFiber = workInProgress;
 
@@ -442,12 +443,15 @@ export function renderWithHooks<Props, SecondArg>(
       ReactCurrentDispatcher.current = HooksDispatcherOnMountInDEV;
     }
   } else {
+    // 根据当前 workInProgress 树上的 Fiber 在 current 树上是否有对应的 Fiber 节点
+    // 来判断是创建 Hook 还是更新 Hook
     ReactCurrentDispatcher.current =
       current === null || current.memoizedState === null
         ? HooksDispatcherOnMount
         : HooksDispatcherOnUpdate;
   }
 
+  // 调用组件函数
   let children = Component(props, secondArg);
 
   // Check if there was a render phase update
@@ -475,6 +479,7 @@ export function renderWithHooks<Props, SecondArg>(
       }
 
       // Start over from the beginning of the list
+      // 重置 hook 链表指针
       currentHook = null;
       workInProgressHook = null;
 
@@ -654,6 +659,7 @@ function mountWorkInProgressHook(): Hook {
     currentlyRenderingFiber.memoizedState = workInProgressHook = hook;
   } else {
     // Append to the end of the list
+    // 后面创建的 useState 是放在前面一个的 Hooks 对象的 next 上。形成一个 hooks 链表
     workInProgressHook = workInProgressHook.next = hook;
   }
   return workInProgressHook;
@@ -665,6 +671,9 @@ function updateWorkInProgressHook(): Hook {
   // clone, or a work-in-progress hook from a previous render pass that we can
   // use as a base. When we reach the end of the base list, we must switch to
   // the dispatcher used for mounts.
+  // currentlyRenderingFiber 是 workInProgress 树上的 fiber
+  // currentlyRenderingFiber.alternate 则是对应在 current 树上的 fiber
+  // nextCurrentHook 的值则是 current 树上的 Fiber 的 Hook 链表
   let nextCurrentHook: null | Hook;
   if (currentHook === null) {
     const current = currentlyRenderingFiber.alternate;
@@ -677,6 +686,7 @@ function updateWorkInProgressHook(): Hook {
     nextCurrentHook = currentHook.next;
   }
 
+  // nextWorkInProgressHook 的值则是 workInProgress 树上的 Fiber 的链表
   let nextWorkInProgressHook: null | Hook;
   if (workInProgressHook === null) {
     nextWorkInProgressHook = currentlyRenderingFiber.memoizedState;
@@ -684,6 +694,8 @@ function updateWorkInProgressHook(): Hook {
     nextWorkInProgressHook = workInProgressHook.next;
   }
 
+  // 将 currentHook 作为 current 树上的 Fiber 的 hook 链表的指针
+  // 将 currentHook 作为 workInProgressHook 作为对应 workInProgress 树上的 Fiber 的 hook 链表的指针
   if (nextWorkInProgressHook !== null) {
     // There's already a work-in-progress. Reuse it.
     workInProgressHook = nextWorkInProgressHook;
@@ -1649,17 +1661,18 @@ function mountState<S>(
   initialState: (() => S) | S,
 ): [S, Dispatch<BasicStateAction<S>>] {
   const hook = mountWorkInProgressHook();
+  // 初始化的值，如果是函数就立刻调用
   if (typeof initialState === 'function') {
     // $FlowFixMe: Flow doesn't like mixed types
     initialState = initialState();
   }
   hook.memoizedState = hook.baseState = initialState;
   const queue: UpdateQueue<S, BasicStateAction<S>> = {
-    pending: null,
-    lanes: NoLanes,
-    dispatch: null,
-    lastRenderedReducer: basicStateReducer,
-    lastRenderedState: (initialState: any),
+    pending: null,  // 需要更新的 state
+    lanes: NoLanes, // 更新的 lane 优先级
+    dispatch: null, // 发起更新的 state 的函数
+    lastRenderedReducer: basicStateReducer, // 上一次计算 state 的函数
+    lastRenderedState: (initialState: any), // 上一次更新的 state
   };
   hook.queue = queue;
   const dispatch: Dispatch<
@@ -2416,6 +2429,7 @@ function dispatchSetState<S, A>(
   if (isRenderPhaseUpdate(fiber)) {
     enqueueRenderPhaseUpdate(queue, update);
   } else {
+    // 获取 workInProgress 树上对应的 fiber
     const alternate = fiber.alternate;
     if (
       fiber.lanes === NoLanes &&
@@ -2424,6 +2438,7 @@ function dispatchSetState<S, A>(
       // The queue is currently empty, which means we can eagerly compute the
       // next state before entering the render phase. If the new state is the
       // same as the current state, we may be able to bail out entirely.
+      // lastRenderedReducer 实际上就是 basicStateReducer 函数
       const lastRenderedReducer = queue.lastRenderedReducer;
       if (lastRenderedReducer !== null) {
         let prevDispatcher;
@@ -2433,6 +2448,7 @@ function dispatchSetState<S, A>(
         }
         try {
           const currentState: S = (queue.lastRenderedState: any);
+          // 获取最新的 state
           const eagerState = lastRenderedReducer(currentState, action);
           // Stash the eagerly computed state, and the reducer used to compute
           // it, on the update object. If the reducer hasn't changed by the
@@ -2440,6 +2456,7 @@ function dispatchSetState<S, A>(
           // without calling the reducer again.
           update.hasEagerState = true;
           update.eagerState = eagerState;
+          // 判断上一次更新的值与本次更新的值是否相同，不同则执行更新，相同直接返回不会执行更新
           if (is(eagerState, currentState)) {
             // Fast path. We can bail out without scheduling React to re-render.
             // It's still possible that we'll need to rebase this update later,
@@ -2472,6 +2489,8 @@ function dispatchSetState<S, A>(
 
 function isRenderPhaseUpdate(fiber: Fiber) {
   const alternate = fiber.alternate;
+  // currentlyRenderingFiber：是在 render 阶段调用函数组件前将函数组件对应的 workInProgress 的 fiber 赋值给了它，在调用函数组件后重置为 null
+  // 如果 fiber === currentlyRenderingFiber，则说明该函数组件正在执行更新任务，将需要更新的数据添加到更新链接中既可，不用产生更新任务进行调度
   return (
     fiber === currentlyRenderingFiber ||
     (alternate !== null && alternate === currentlyRenderingFiber)
@@ -2486,6 +2505,7 @@ function enqueueRenderPhaseUpdate<S, A>(
   // queue -> linked list of updates. After this render pass, we'll restart
   // and apply the stashed updates on top of the work-in-progress hook.
   didScheduleRenderPhaseUpdateDuringThisPass = didScheduleRenderPhaseUpdate = true;
+  // 将创建对象链接形成一个环形链表
   const pending = queue.pending;
   if (pending === null) {
     // This is the first update. Create a circular list.
