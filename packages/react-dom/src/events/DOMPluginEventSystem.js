@@ -386,6 +386,7 @@ const listeningMarker =
 export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
   if (!(rootContainerElement: any)[listeningMarker]) {
     (rootContainerElement: any)[listeningMarker] = true;
+    // TODO: ======== allNativeEvents 是在哪里赋初始值的？ ========
     allNativeEvents.forEach(domEventName => {
       // We handle selectionchange separately because it
       // doesn't bubble and needs to be on the document.
@@ -418,6 +419,7 @@ function addTrappedEventListener(
   isCapturePhaseListener: boolean,
   isDeferredListenerForLegacyFBSupport?: boolean,
 ) {
+  // 根据优先级创建事件监听
   let listener = createEventListenerWrapperWithPriority(
     targetContainer,
     domEventName,
