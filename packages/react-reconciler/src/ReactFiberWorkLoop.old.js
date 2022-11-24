@@ -705,7 +705,7 @@ export function scheduleUpdateOnFiber(
 
   // Mark that the root has a pending update.
   // https://juejin.cn/post/7008802041602506765
-  // FIXME: ======== 参考资料 中的方法和这里有点不一样，拉通看时特别注意一下这里 ========
+  // TODO: ======== 参考资料 中的方法和这里有点不一样，拉通看时特别注意一下这里 ========
   // 将当前需要更新的 lane 添加到 fiber root 的 pendingLanes 属性上，表示有新的更新任务需要被执行
   // 通过计算当前 lane 的位置，并添加事件触发时间到 eventTimes 中
   markRootUpdated(root, lane, eventTime);
@@ -1623,6 +1623,7 @@ declare function flushSync(): void;
 export function flushSync(fn): void {
   // In legacy mode, we flush pending passive effects at the beginning of the
   // next event, not at the end of the previous one.
+  // 在遗留模式中，我们在下一个事件开始时刷新挂起的被动效果，而不是在前一个事件结束时刷新。
   if (
     rootWithPendingPassiveEffects !== null &&
     rootWithPendingPassiveEffects.tag === LegacyRoot &&
@@ -2115,6 +2116,7 @@ function performUnitOfWork(unitOfWork: Fiber): void {
   const current = unitOfWork.alternate;
   setCurrentDebugFiberInDEV(unitOfWork);
 
+  // beginWork的主要工作，则是从root fiber开始向下深度遍历构建workInprogress树，进行diff算法确定需要更新的fiber的最终状态。
   let next;
   if (enableProfilerTimer && (unitOfWork.mode & ProfileMode) !== NoMode) {
     startProfilerTimer(unitOfWork);

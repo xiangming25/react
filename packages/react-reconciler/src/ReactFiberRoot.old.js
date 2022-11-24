@@ -95,7 +95,7 @@ function FiberRootNode(
   }
 
   this.incompleteTransitions = new Map();
-  // FIXME: ==== enableTransitionTracing 的作用是什么 ====
+  // TODO: ==== enableTransitionTracing 的作用是什么 ====
   if (enableTransitionTracing) {
     this.transitionCallbacks = null;
     const transitionLanesMap = (this.transitionLanes = []);
@@ -169,12 +169,12 @@ export function createFiberRoot(
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
   );
-  // FIXME: ==== 双缓存让第一次进来时，current 指向了 rootFiber。但是生成的节点是如何在浏览器中渲染的呢？ ====
+  // TODO: ==== 双缓存让第一次进来时，current 指向了 rootFiber。但是生成的节点是如何在浏览器中渲染的呢？ ====
   // 用 current 将 FiberRoot 和 RootFiber 相关联
   root.current = uninitializedFiber;
   // 使用 stateNode 关联了 FiberRoot 实例。
   // rootFiber 可以看做是 render 内容的根节点
-  // FIXME: ======== 这里 FiberRoot 关联了 rootFiber，rootFiber 又通过 stateNode 关联了 FiberRoot。是怎么避免死循环嵌套的？ ========
+  // TODO: ======== 这里 FiberRoot 关联了 rootFiber，rootFiber 又通过 stateNode 关联了 FiberRoot。是怎么避免死循环嵌套的？ ========
   uninitializedFiber.stateNode = root;
 
   if (enableCache) {

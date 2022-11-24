@@ -569,8 +569,10 @@ function checkClassInstance(workInProgress: Fiber, ctor: any, newProps: any) {
 
 function adoptClassInstance(workInProgress: Fiber, instance: any): void {
   instance.updater = classComponentUpdater;
+  // fiber 节点的 stateNode 属性指向该 fiber 节点对应的组件实例对象
   workInProgress.stateNode = instance;
   // The instance needs access to the fiber so that it can schedule updates
+  // 将组件实例与 fiber 关联在一起，instance._reactInternals  = workInProgress
   setInstance(instance, workInProgress);
   if (__DEV__) {
     instance._reactInternalInstance = fakeInternalInstance;
@@ -641,6 +643,7 @@ function constructClassInstance(
       : emptyContextObject;
   }
 
+  // 实例化组件
   let instance = new ctor(props, context);
   // Instantiate twice to help detect side-effects.
   if (__DEV__) {
@@ -657,10 +660,12 @@ function constructClassInstance(
     }
   }
 
+  // 将获取到的组件上的 state 属性复制给 workInProgress.memoizedState
   const state = (workInProgress.memoizedState =
     instance.state !== null && instance.state !== undefined
       ? instance.state
       : null);
+  // 将 fiber 节点与组件实例相互关联，在之前更新时可复用
   adoptClassInstance(workInProgress, instance);
 
   if (__DEV__) {
@@ -869,19 +874,23 @@ function mountClassInstance(
 
   instance.state = workInProgress.memoizedState;
 
+  // 检查当前组件是否声明了 getDerivedStateFromProps 生命周期函数
   const getDerivedStateFromProps = ctor.getDerivedStateFromProps;
   if (typeof getDerivedStateFromProps === 'function') {
+    // 有声明的话则会调用并且使用 getDerivedStateFromProps 生命周期函数中返回的 state 来更新 workInProgress.memoizedState
     applyDerivedStateFromProps(
       workInProgress,
       ctor,
       getDerivedStateFromProps,
       newProps,
     );
+    // 将更新了的 state 赋值给组件实例的 state 属性
     instance.state = workInProgress.memoizedState;
   }
 
   // In order to support react-lifecycles-compat polyfilled components,
   // Unsafe lifecycles should not be invoked for components using the new APIs.
+  // 调用 componentWillMount 生命周期
   if (
     typeof ctor.getDerivedStateFromProps !== 'function' &&
     typeof instance.getSnapshotBeforeUpdate !== 'function' &&
@@ -895,6 +904,7 @@ function mountClassInstance(
     instance.state = workInProgress.memoizedState;
   }
 
+  // 判断是否声明了 componentDidMount 声明周期，声明了则会添加标识 Update 至 flags 中，在 commit 阶段使用
   if (typeof instance.componentDidMount === 'function') {
     const fiberFlags: Flags = Update | LayoutStatic;
     workInProgress.flags |= fiberFlags;
@@ -1100,6 +1110,8 @@ function updateClassInstance(
   resetHasForceUpdateBeforeProcessing();
 
   const oldState = workInProgress.memoizedState;
+  // 执行更新队列，把将要更新的 state 的值与老的 state 的值进行合并
+  // 合并完成后会把新的 state 的挂载到 workInProgress.memoizedState 属性上
   let newState = (instance.state = oldState);
   processUpdateQueue(workInProgress, newProps, instance, renderLanes);
   newState = workInProgress.memoizedState;
@@ -1147,6 +1159,8 @@ function updateClassInstance(
     newState = workInProgress.memoizedState;
   }
 
+  // checkHasForceUpdateAfterProcessing 是获取是否强制更新的标识，也就是调用 forceUpdate 方法创建的更新
+  // checkShouldComponentUpdate 是调用组件内声明的 shouldComponentUpdate 生命周期方法，判断是否需要更新
   const shouldUpdate =
     checkHasForceUpdateAfterProcessing() ||
     checkShouldComponentUpdate(
@@ -1216,6 +1230,7 @@ function updateClassInstance(
 
   // Update the existing instance's state, props, and context pointers even
   // if shouldComponentUpdate returns false.
+  // 使用新的值分别更新组件的 props、state 的值
   instance.props = newProps;
   instance.state = newState;
   instance.context = nextContext;

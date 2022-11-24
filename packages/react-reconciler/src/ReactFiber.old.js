@@ -125,7 +125,7 @@ function FiberNode(
   mode: TypeOfMode,
 ) {
   // Instance，作为静态数据结构的属性
-  this.tag = tag; // 当前 fiber 的类型：ClassComponent、FunctionComponent、HostComponent
+  this.tag = tag; // 当前 fiber 的类型：ClassComponent、FunctionComponent、HostComponent、HostRoot
   this.key = key;
   this.elementType = null; // 类组件指向的是组件的类，HostComponent 指向的是标签类型：div、span...
   this.type = null; // 与 elementType 一样。类组件指向的是组件的类，HostComponent 指向的是标签类型：div、span
@@ -220,7 +220,7 @@ const createFiber = function(
   key: null | string,
   mode: TypeOfMode,
 ): Fiber {
-  // FIXME: ==== 这里只创建了一个 Fiber 节点吗？ ====
+  // TODO: ==== 这里只创建了一个 Fiber 节点吗？ ====
   // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
   return new FiberNode(tag, pendingProps, key, mode);
 };

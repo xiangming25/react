@@ -138,6 +138,7 @@ function legacyCreateRootFromDOMContainer(
       null,
     );
     container._reactRootContainer = root;
+    // TODO: ======== 这一步有什么用 ========
     markContainerAsRoot(root.current, container);
 
     const rootContainerElement =
@@ -149,7 +150,8 @@ function legacyCreateRootFromDOMContainer(
   } else {
     // First clear any existing content.
     let rootSibling;
-    // FIXME: ==== 为什么首次进来要删掉已经存在的内容 ====
+    // 初始进来的时候，container.lastChild 为 null
+    // TODO: ==== 为什么首次进来要删掉已经存在的内容 ====
     while ((rootSibling = container.lastChild)) {
       container.removeChild(rootSibling);
     }
@@ -162,7 +164,7 @@ function legacyCreateRootFromDOMContainer(
       };
     }
 
-    // 创建容器根节点
+    // 根据 <div id="root"></div> 创建容器根节点
     const root = createContainer(
       container,
       LegacyRoot,
@@ -173,14 +175,19 @@ function legacyCreateRootFromDOMContainer(
       noopOnRecoverableError, // onRecoverableError
       null, // transitionCallbacks
     );
+    // 对 container._reactRootContainer 重新赋值，以后在调用 legacyRenderSubtreeIntoContainer 方法时不会再再进入创建方法中
     container._reactRootContainer = root;
+    // container.__reactContainer$random = root.current
     markContainerAsRoot(root.current, container);
 
     const rootContainerElement =
       container.nodeType === COMMENT_NODE ? container.parentNode : container;
+    // 监听所有支持的事件
+    // TODO: ======== 事件系统详读 ========
     listenToAllSupportedEvents(rootContainerElement);
 
     // Initial mount should not be batched.
+    // FIXME: 让 updateContainer 的更新变成同步，执行完 updateContainer 后再返回 root
     flushSync(() => {
       updateContainer(initialChildren, root, parentComponent, callback);
     });
@@ -214,7 +221,7 @@ function legacyRenderSubtreeIntoContainer(
     warnOnInvalidCallback(callback === undefined ? null : callback, 'render');
   }
 
-  // FIXME: ==== 这个方法除了第一次调用还会在哪里调用 ====
+  // TODO: ==== 这个方法除了第一次调用还会在哪里调用 ====
   const maybeRoot = container._reactRootContainer;
   let root: FiberRoot;
   if (!maybeRoot) {

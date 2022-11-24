@@ -658,7 +658,7 @@ export function createLaneMap<T>(initial: T): LaneMap<T> {
   // Intentionally pushing one by one.
   // https://v8.dev/blog/elements-kinds#avoid-creating-holes
   const laneMap = [];
-  // FIXME: ==== 这里为什么要向 laneMap 里面循环 push 31 个数值 ====
+  // TODO: ==== 这里为什么要向 laneMap 里面循环 push 31 个数值 ====
   for (let i = 0; i < TotalLanes; i++) {
     laneMap.push(initial);
   }
