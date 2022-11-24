@@ -124,26 +124,26 @@ function FiberNode(
   key: null | string,
   mode: TypeOfMode,
 ) {
-  // Instance
+  // Instance，作为静态数据结构的属性
   this.tag = tag; // 当前 fiber 的类型：ClassComponent、FunctionComponent、HostComponent
   this.key = key;
-  this.elementType = null;  // 类组件指向的是组件的类，HostComponent 指向的是标签类型：div、span...
+  this.elementType = null; // 类组件指向的是组件的类，HostComponent 指向的是标签类型：div、span...
   this.type = null; // 与 elementType 一样。类组件指向的是组件的类，HostComponent 指向的是标签类型：div、span
   this.stateNode = null; // fiber 的实例，类组件指向的是组件实例，HostComponent 指向的是 dom 元素
 
-  // Fiber
+  // Fiber，用于连接其它 Fiber 节点形成 Fiber 树
   this.return = null; // 指向父级 fiber
-  this.child = null;  // 指向子级 fiber
-  this.sibling = null;  // 指向兄弟 fiber
+  this.child = null; // 指向子级 fiber
+  this.sibling = null; // 指向兄弟 fiber
   this.index = 0;
 
-  this.ref = null;  // ref 相关
+  this.ref = null; // ref 相关
 
-  // 更新相关
+  // 更新相关。作为动态的工作单元的属性
   this.pendingProps = pendingProps; // 将要执行更新的属性
-  this.memoizedProps = null;  // 上一次更新的 props
-  this.updateQueue = null;  // 更新队列
-  this.memoizedState = null;  // 上一次更新的 state
+  this.memoizedProps = null; // 上一次更新的 props
+  this.updateQueue = null; // 更新队列
+  this.memoizedState = null; // 上一次更新的 state
   this.dependencies = null;
 
   this.mode = mode;
@@ -155,7 +155,7 @@ function FiberNode(
 
   // 和 lanes 优先级相关
   this.lanes = NoLanes; // 表示当前节点是否需要更新
-  this.childLanes = NoLanes;  // 表示当前节点的子节点是否需要更新
+  this.childLanes = NoLanes; // 表示当前节点的子节点是否需要更新
 
   // current 树和 workInProgress 树中节点相互关联的属性
   // 可以用于判断是否需要更新还是创建，有值表示更新，反之则需要创建
