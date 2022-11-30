@@ -298,6 +298,10 @@ if (__DEV__) {
   didWarnAboutDefaultPropsOnFunctionComponent = {};
 }
 
+/**
+ * 为 workInProgress fiber 节点生成它的 child fiber 即 workInProgress child。
+ * 然后继续深度优先遍历它的子节点执行相同的操作
+ */
 export function reconcileChildren(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -1324,7 +1328,7 @@ function finishClassComponent(
     if (hasContext) {
       invalidateContextProvider(workInProgress, Component, false);
     }
-
+    // 满足条件时，调用 bailoutOnAlreadyFinishedWork 复用 Current Fiber 来进行优化
     return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
   }
 
@@ -3562,6 +3566,7 @@ function bailoutOnAlreadyFinishedWork(
 
   // This fiber doesn't have work, but its subtree does. Clone the child
   // fibers and continue.
+  // 条件满足时，进行 cloneChildFibers 方法，对子节点进行复制
   cloneChildFibers(current, workInProgress);
   return workInProgress.child;
 }
@@ -3967,6 +3972,7 @@ function beginWork(
   workInProgress.lanes = NoLanes;
 
   switch (workInProgress.tag) {
+    // 不确定的组件
     case IndeterminateComponent: {
       return mountIndeterminateComponent(
         current,

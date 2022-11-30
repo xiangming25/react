@@ -250,6 +250,7 @@ if (supportsMutation) {
   updateHostContainer = function(current: null | Fiber, workInProgress: Fiber) {
     // Noop
   };
+  // 处理 props，（包括 onClick、style、children），并将处理好的 props 赋值给 updatePayload，最后会保存在 workInProgress.updateQueue 上
   updateHostComponent = function(
     current: Fiber,
     workInProgress: Fiber,
@@ -839,6 +840,7 @@ function completeDehydratedSuspenseBoundary(
   }
 }
 
+/** 主要工作是处理 fiber 的 props、创建 DOM、创建 effectList */
 function completeWork(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -995,6 +997,7 @@ function completeWork(
           }
         } else {
           const rootContainerInstance = getRootHostContainer();
+          // 创建 Fiber 对应的 DOM 实例
           const instance = createInstance(
             type,
             newProps,
@@ -1003,6 +1006,7 @@ function completeWork(
             workInProgress,
           );
 
+          // 将后代 DOM 节点插入刚创建的 DOM 里
           appendAllChildren(instance, workInProgress, false, false);
 
           // 在这里直接修改 workInProgress 的stateNode，以便在其它地方直接使用
@@ -1011,6 +1015,7 @@ function completeWork(
           // Certain renderers require commit-time effects for initial mount.
           // (eg DOM renderer supports auto-focus for certain elements).
           // Make sure such renderers get scheduled for later work.
+          // 处理 props
           if (
             finalizeInitialChildren(
               instance,
