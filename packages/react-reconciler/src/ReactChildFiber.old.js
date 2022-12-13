@@ -783,19 +783,20 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     // 列表中使用 React element 数据更新了属性的第一个 Fiber 节点
-    let resultingFirstChild: Fiber | null = null;
+    let resultingFirstChild: Fiber | null = null; // diff 之后返回的第一个节点
     // 上一个更新了属性的 Fiber 节点，用以列表中兄弟节点的相互关联
-    let previousNewFiber: Fiber | null = null;
+    let previousNewFiber: Fiber | null = null; // 新节点中上次对比过的节点
 
-    let oldFiber = currentFirstChild; // current 树上的列表中的第一个Fiber 节点
-    let lastPlacedIndex = 0;  // 上一个元素移动位置的下标
+    let oldFiber = currentFirstChild; // current 树上的列表中的第一个Fiber 节点，正在对比的 oldFiber
+    let lastPlacedIndex = 0;  // 上一个元素移动位置的下标，上次可复用的节点位置 或者 oldFiber 的位置
     let newIdx = 0; // 遍历 React element 树上的下标
-    let nextOldFiber = null;  // current 树上的列表中元素的兄弟节点
+    let nextOldFiber = null;  // current 树上的列表中元素的兄弟节点，正在对比的 oldFiber
 
     /** 
      * 这个 for 循环的作用是剔除没有变化的节点，并对节点进行更新和重用
      * 当检查到尾部有新增节点时，oldFiber 为 null，则会跳出循环，然后创建新的 Fiber 插入到尾部，不需要与其它节点进行对比
      * 当有新节点插在中间插入，newFiber 则为空，则会跳出循环，然后需要移动节点位置进行排序
+     * 把这个循环放在第一个，其原因在于大多数的应用中，节点更新的频率更加频繁
      */
     for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
       if (oldFiber.index > newIdx) {
@@ -818,11 +819,13 @@ function ChildReconciler(shouldTrackSideEffects) {
         // a better way to communicate whether this was a miss or null,
         // boolean, undefined, etc.
         if (oldFiber === null) {
+          // FIXME: ======== 旧的指向了下一个，新的newIdx 会加 +1 吗？========
           oldFiber = nextOldFiber;
         }
         break;
       }
       if (shouldTrackSideEffects) {
+        // key 同 type 不同，标记 oldFiber 为 DELETION
         if (oldFiber && newFiber.alternate === null) {
           // We matched the slot, but we didn't reuse the existing fiber, so we
           // need to delete the existing child.
@@ -831,7 +834,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       }
       // 将 newIdex 复制给 workInProgress 树上的 Fiber 节点的 index 属性，代表当前元素在列表中的位置（下标）
       // 判断 current 树上元素的 Index 是否小于 lastPlacedIndex，是则表示该元素需要移动位置，否则表示不需要移动位置
-      lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
+      lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx); // 标记节点插入
       if (previousNewFiber === null) {
         // TODO: Move out of the loop. This only happens for the first run.
         resultingFirstChild = newFiber;
@@ -847,6 +850,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       oldFiber = nextOldFiber;
     }
 
+    // 第一次遍历完。newChildren 遍历完，oldFiber 没遍历完，将 oldFiber 中没遍历完的节点标记为 DELETION，即删除的 tag
     // 新的子节点已经遍历完成，如果还有剩下的节点，表示 current 树上有，但是 workInProgress 树上没有的节点，需要全部删除
     if (newIdx === newChildren.length) {
       // We've reached the end of the new children. We can delete the rest.
@@ -858,6 +862,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       return resultingFirstChild;
     }
 
+    // 第二次遍历，newChildren 没遍历完，oldFiber 遍历完，将剩下的 newChildren 节点标记为 Placement，即插入的 Tag
     // 节点新增，不需要与旧节点对比，直接创建新增
     if (oldFiber === null) {
       // If we don't have any more existing children we can choose a fast path
@@ -867,7 +872,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         if (newFiber === null) {
           continue;
         }
-        lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
+        lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx); // 插入新增节点
         if (previousNewFiber === null) {
           // TODO: Move out of the loop. This only happens for the first run.
           resultingFirstChild = newFiber;
@@ -890,7 +895,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     const existingChildren = mapRemainingChildren(returnFiber, oldFiber);
 
     // Keep scanning and use the map to restore deleted items as moves.
-    // 节点移动
+    // 第三次遍历，节点移动
     for (; newIdx < newChildren.length; newIdx++) {
       // 根据 key 取出 Map 中对应的旧的Fiber 与 React element 做类型的比较
       // 如果类型相同则使用 React element 的数据更新 Fiber 节点上的属性进行重用，不同，则会根据 React element 的数据重新创建一个新的 Fiber 做插入操作
@@ -918,8 +923,8 @@ function ChildReconciler(shouldTrackSideEffects) {
           }
         }
         // 将 newIdex 赋值给 workInProgress 树上的 Fiber 节点的 index 属性，代表当前元素在列表中的位置（下标）
-        // 判断 current 树上元素的 Index 是否小于 lastPlacedIndex，是则表示该元素需要移动午饭了，否则表示不需要移动位置
-        lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
+        // 判断 current 树上元素的 Index 是否小于 lastPlacedIndex，是则表示该元素需要移动位置了，否则表示不需要移动位置
+        lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx); // 标记为插入的逻辑
         if (previousNewFiber === null) {
           resultingFirstChild = newFiber;
         } else {
@@ -933,7 +938,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     if (shouldTrackSideEffects) {
       // Any existing children that weren't consumed above were deleted. We need
       // to add them to the deletion list.
-      // existingChildn 中剩下的 Fiber，表示 current 树上存在，但是 workInProgress 树上不存在的元素
+      // existingChildren 中剩下的 Fiber，表示 current 树上存在，但是 workInProgress 树上不存在的元素
       // 将剩下的 Fiber 添加到父 Fiber 节点的deletions 属性中，并且在 flags 集合中添加删除标识，在 commit 阶段会将这些元素进行删除
       existingChildren.forEach(child => deleteChild(returnFiber, child));
     }
@@ -1172,10 +1177,15 @@ function ChildReconciler(shouldTrackSideEffects) {
     return created;
   }
 
+  /**
+   * key 和 type 相同表示可以复用节点
+   * key 不同直接标记删除节点，然后新建节点
+   * key 相同 type 不同，标记删除该节点和兄弟节点，然后新建节点
+  */
   function reconcileSingleElement(
-    returnFiber: Fiber,
-    currentFirstChild: Fiber | null,
-    element: ReactElement,
+    returnFiber: Fiber, // workInProgress
+    currentFirstChild: Fiber | null, // current.child
+    element: ReactElement,  // 使用最新数据生成的 React element 元素
     lanes: Lanes,
   ): Fiber {
     // 获取 React element 元素上的 key 属性
@@ -1183,6 +1193,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     // current 树上的 Fiber 节点
     let child = currentFirstChild;
     /**
+     * child 节点不为 null 执行对比
      * current 树已经被渲染在屏幕上
      * 通过 current 树上的 Fiber 节点的 key 属性与新生成的 React element 元素的 key 属性进行对比
      * 如果不相等，则会把该节点对应的 current 树上的 Fiber 对象添加到父 Fiber 的 deletions 属性中
@@ -1198,6 +1209,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       if (child.key === key) {
         const elementType = element.type;
         if (elementType === REACT_FRAGMENT_TYPE) {
+          // 如果当前的类型为 Fragment，删除这个节点的兄弟节点
           if (child.tag === Fragment) {
             deleteRemainingChildren(returnFiber, child.sibling);
             const existing = useFiber(child, element.props.children);
@@ -1245,15 +1257,18 @@ function ChildReconciler(shouldTrackSideEffects) {
             return existing;
           }
         }
+        // key 相同，类型不同，删除当前节点
         // Didn't match.
         deleteRemainingChildren(returnFiber, child);
         break;
       } else {
+        // key 不同，直接删除节点
         deleteChild(returnFiber, child);
       }
       child = child.sibling;
     }
 
+    // currentFiber 没有内容时，走新建流程
     if (element.type === REACT_FRAGMENT_TYPE) {
       const created = createFiberFromFragment(
         element.props.children,
