@@ -1514,6 +1514,7 @@ function commitAttachRef(finishedWork: Fiber) {
       if (shouldProfile(finishedWork)) {
         try {
           startLayoutEffectTimer();
+          // 执行 ref 回调
           retVal = ref(instanceToUse);
         } finally {
           recordLayoutEffectDuration(finishedWork);
@@ -1542,6 +1543,7 @@ function commitAttachRef(finishedWork: Fiber) {
       }
 
       // $FlowFixMe unable to narrow type to the non-function case
+      // 判断如果是值，直接赋值给 current
       ref.current = instanceToUse;
     }
   }

@@ -2365,6 +2365,7 @@ function commitRootImpl(
   transitions: Array<Transition> | null,
   renderPriorityLevel: EventPriority,
 ) {
+  // ==============================commit 前置阶段==============================
   do {
     // `flushPassiveEffects` will call `flushSyncUpdateQueue` at the end, which
     // means `flushPassiveEffects` will sometimes result in additional
@@ -2372,6 +2373,7 @@ function commitRootImpl(
     // no more pending effects.
     // TODO: Might be better if `flushPassiveEffects` did not automatically
     // flush synchronous work at the end, to avoid factoring hazards like this.
+    // 1. 调用 flushPassiveEffects 执行完所有 effect 任务
     flushPassiveEffects();
   } while (rootWithPendingPassiveEffects !== null);
   flushRenderPhaseStrictModeWarningsInDEV();
@@ -2415,7 +2417,10 @@ function commitRootImpl(
       }
     }
   }
+  // 2. 初始化相关变量
+  // 重置变量 finishedWork 指向 rootFiber
   root.finishedWork = null;
+  // 重置优先级
   root.finishedLanes = NoLanes;
 
   if (finishedWork === root.current) {
@@ -2427,6 +2432,7 @@ function commitRootImpl(
 
   // commitRoot never returns a continuation; it always finishes synchronously.
   // So we can clear these now to allow a new callback to be scheduled.
+  // scheduler 回调函数重置
   root.callbackNode = null;
   root.callbackPriority = NoLane;
 
@@ -2443,6 +2449,7 @@ function commitRootImpl(
   // 清空掉已经执行完成的 lanes 的数据
   markRootFinished(root, remainingLanes);
 
+  // 重置全局变量
   if (root === workInProgressRoot) {
     // We can reset these now that they are finished.
     workInProgressRoot = null;
@@ -2488,6 +2495,7 @@ function commitRootImpl(
   // to check for the existence of `firstEffect` to satisfy Flow. I think the
   // only other reason this optimization exists is because it affects profiling.
   // Reconsider whether this is necessary.
+  // 3. 赋值 firstEffect 给后面遍历 effectList 使用
   const subtreeHasEffects =
     (finishedWork.subtreeFlags &
       (BeforeMutationMask | MutationMask | LayoutMask | PassiveMask)) !==
@@ -2509,6 +2517,7 @@ function commitRootImpl(
     // Reset this to null before calling lifecycles
     ReactCurrentOwner.current = null;
 
+    // ==============================mutation阶段==============================
     // The commit phase is broken into several sub-phases. We do a separate pass
     // of the effect list for each phase: all mutation effects come before all
     // layout effects, and so on.
@@ -2543,10 +2552,17 @@ function commitRootImpl(
     }
     resetAfterCommit(root.containerInfo);
 
+    /**
+     * workInProgress Fiber 变成 Current。这个步骤发生在 commitMutationEffects 函数执行之后，commitLayoutEffect 之前，因为 componentWillUnMount
+     * 发生在 commitMutationEffects 函数中，这里还可以获取到之前的 Update，而 componentDidMount 和 componentDidUpdate 会发生在 commitLayoutEffects 中
+     * 执行，这里已经可以获取更新后的真实 DOM 了。
+    */
+
     // The work-in-progress tree is now the current tree. This must come after
     // the mutation phase, so that the previous tree is still current during
     // componentWillUnmount, but before the layout phase, so that the finished
     // work is current during componentDidMount/Update.
+    // 切换 workInProgress 树为 current 树
     root.current = finishedWork;
 
     // The next phase is the layout phase, where we call effects that read
@@ -2652,6 +2668,7 @@ function commitRootImpl(
 
   // Always call this before exiting `commitRoot`, to ensure that any
   // additional work on this root is scheduled.
+  // 确保被调度
   ensureRootIsScheduled(root, now());
 
   if (recoverableErrors !== null) {
