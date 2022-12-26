@@ -194,6 +194,7 @@ const classComponentUpdater = {
     const eventTime = requestEventTime();
     const lane = requestUpdateLane(fiber);
 
+    // 创建 update，并在后面的 render 阶段的 beginWork 中计算 Update
     const update = createUpdate(eventTime, lane);
     update.payload = payload;
     if (callback !== undefined && callback !== null) {
@@ -203,9 +204,9 @@ const classComponentUpdater = {
       update.callback = callback;
     }
 
-    const root = enqueueUpdate(fiber, update, lane);
+    const root = enqueueUpdate(fiber, update, lane); // update 加入 updateQueue
     if (root !== null) {
-      scheduleUpdateOnFiber(root, fiber, lane, eventTime);
+      scheduleUpdateOnFiber(root, fiber, lane, eventTime);  // 调度 update
       entangleTransitions(root, fiber, lane);
     }
 

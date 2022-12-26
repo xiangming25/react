@@ -982,10 +982,10 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
     newCallbackNode = null;
   } else {
     let schedulerPriorityLevel;
-    // lanesToEventPriority 寒素将 lane 的优先级转换为 React 事件的优先级
+    // lanesToEventPriority 函数将 lane 的优先级转换为 React 事件的优先级
     // 然后根据 React 事件优先级转换为 Scheduler 优先级
     // 为什么这里需要做一次优先级转换呢？因为 React 和 Scheduler 都是相对独立的，它们自己内部都有自己的一套优先级机制，
-    // 所以当 React 产生的事件需要被 Scheduler 高度时，需要将 React 的事件优先级转换为 Scheduler 的调度优先级。
+    // 所以当 React 产生的事件需要被 Scheduler 调度时，需要将 React 的事件优先级转换为 Scheduler 的调度优先级。
     switch (lanesToEventPriority(nextLanes)) {
       case DiscreteEventPriority:
         schedulerPriorityLevel = ImmediateSchedulerPriority;
@@ -1012,6 +1012,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
   }
 
   root.callbackPriority = newCallbackPriority;
+  // 将返回的 newTask 挂载到 root 的 callbackNode 属性上
   root.callbackNode = newCallbackNode;
 }
 
@@ -1079,6 +1080,7 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
     !includesBlockingLane(root, lanes) &&
     !includesExpiredLane(root, lanes) &&
     (disableSchedulerTimeoutInWorkLoop || !didTimeout);
+  // originalCallbackNode 会在下面两个方法中的其中之一被消耗
   let exitStatus = shouldTimeSlice
     ? renderRootConcurrent(root, lanes)
     : renderRootSync(root, lanes);

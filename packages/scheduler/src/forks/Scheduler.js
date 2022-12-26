@@ -201,6 +201,7 @@ function flushWork(hasTimeRemaining, initialTime) {
 
 function workLoop(hasTimeRemaining, initialTime) {
   let currentTime = initialTime;
+  // 检查是否有过期任务需要添加到 taskQueue 中执行的
   advanceTimers(currentTime);
   // 取出第一个任务（添加任务时以过期时间作为排序依据，过期时间越小排在越前面，表示执行的优先级越高）
   currentTask = peek(taskQueue);
@@ -211,6 +212,7 @@ function workLoop(hasTimeRemaining, initialTime) {
     //当前任务过期时间是否大于当前时间，大于则表示没有过期则不需要立即执行
     //hasTimeRemaining: 表示是否还有剩余时间，剩余时间不足则需要中断当前任务，让其他任务先执行
     //shouldYieldToHost: 是否应该中断当前任务
+    // 这也是中止当前任务的关键
     if (
       currentTask.expirationTime > currentTime &&
       (!hasTimeRemaining || shouldYieldToHost())
@@ -346,6 +348,12 @@ function unstable_wrapCallback(callback) {
   };
 }
 
+/**
+ * scheduleCallback 中主要是创建一个新的任务，并且根据任务的开始时间来判断任务是否过期。
+ * 针对未过期的任务则会添加到 timerQueue 中，使用 startTimer 作为排序的依据。
+ * 如果 taskQueue 中任务会全部执行完成，则会调用 requestHostTimeout，实际上这个函数是创建一个 setTimeout，
+ * 把第一个任务的超时时间作为 setTimeout 的时间间隔调用 handleTimeout。
+*/
 function unstable_scheduleCallback(priorityLevel, callback, options) {
   var currentTime = getCurrentTime();
 
@@ -421,17 +429,18 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
       //重新调用requestHostTimeout检查延时队列中是否有过期任务
       if (isHostTimeoutScheduled) {
         // Cancel an existing timeout.
-        // 创建一个timeout作为调度者
         cancelHostTimeout();
       } else {
         isHostTimeoutScheduled = true;
       }
       // Schedule a timeout.
+      // 创建一个 timeout 作为调度者
       requestHostTimeout(handleTimeout, startTime - currentTime);
     }
   } else {
     //将过期时间作为排序id，越小排在越靠前
     newTask.sortIndex = expirationTime;
+    // 将新创建的任务添加进过期任务队列中
     push(taskQueue, newTask);
     if (enableProfiling) {
       markTaskStart(newTask, currentTime);
@@ -616,6 +625,10 @@ const performWorkUntilDeadline = () => {
   needsPaint = false;
 };
 
+/**
+ * schedulePerformWorkUntilDeadline 函数主要是创建一个调度者，并调用 performWorkUntilDeadline 函数发起任务的高度
+ * performWorkUntilDeadline 函数中则会调用任务的执行函数开始执行任务
+ */
 let schedulePerformWorkUntilDeadline;
 if (typeof localSetImmediate === 'function') {
   // Node.js and old IE.

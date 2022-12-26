@@ -255,8 +255,10 @@ export function enqueueUpdate<State>(
     const pending = sharedQueue.pending;
     if (pending === null) {
       // This is the first update. Create a circular list.
+      // 与自己形成环状链表
       update.next = update;
     } else {
+      // 加入链表的结尾
       update.next = pending.next;
       pending.next = update;
     }
@@ -480,22 +482,22 @@ export function processUpdateQueue<State>(
     currentlyProcessingQueue = queue.shared;
   }
 
-  let firstBaseUpdate = queue.firstBaseUpdate;
-  let lastBaseUpdate = queue.lastBaseUpdate;
+  let firstBaseUpdate = queue.firstBaseUpdate;  // updateQueue 的第一个 update
+  let lastBaseUpdate = queue.lastBaseUpdate; // updateQueue 的最后一个 update
 
   // Check if there are pending updates. If so, transfer them to the base queue.
-  let pendingQueue = queue.shared.pending;
+  let pendingQueue = queue.shared.pending; // 未计算的 pendingQueue
   if (pendingQueue !== null) {
     queue.shared.pending = null;
 
     // The pending queue is circular. Disconnect the pointer between first
     // and last so that it's non-circular.
-    const lastPendingUpdate = pendingQueue;
-    const firstPendingUpdate = lastPendingUpdate.next;
-    lastPendingUpdate.next = null;
+    const lastPendingUpdate = pendingQueue; // 未计算的 pendingQueue 的最后一个 update
+    const firstPendingUpdate = lastPendingUpdate.next; // 未计算的 pendingQueue 的第一个 update
+    lastPendingUpdate.next = null; // 剪开环状链表
     // Append pending updates to base queue
     if (lastBaseUpdate === null) {
-      firstBaseUpdate = firstPendingUpdate;
+      firstBaseUpdate = firstPendingUpdate; // 将 pendingQueue 加入到 updateQueue 中
     } else {
       lastBaseUpdate.next = firstPendingUpdate;
     }
@@ -506,7 +508,7 @@ export function processUpdateQueue<State>(
     // queue is a singly-linked list with no cycles, we can append to both
     // lists and take advantage of structural sharing.
     // TODO: Pass `current` as argument
-    const current = workInProgress.alternate;
+    const current = workInProgress.alternate; // current 上做同样的操作
     if (current !== null) {
       // This is always non-null on a ClassComponent or HostRoot
       const currentQueue: UpdateQueue<State> = (current.updateQueue: any);
@@ -579,6 +581,7 @@ export function processUpdateQueue<State>(
       } else {
         // This update does have sufficient priority.
 
+        // 直到 newLastBaseUpdate 为 null 才会计算，防止 updateQueue 没计算完
         if (newLastBaseUpdate !== null) {
           const clone: Update<State> = {
             eventTime: updateEventTime,
@@ -600,6 +603,7 @@ export function processUpdateQueue<State>(
         }
 
         // Process this update.
+        // 根据 updateQueue 计算 state
         newState = getStateFromUpdate(
           workInProgress,
           queue,
