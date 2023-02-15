@@ -1362,6 +1362,7 @@ function ChildReconciler(shouldTrackSideEffects) {
               lanes,
             ),
           );
+        // 通过 ReactDOM.createPortal 创建时的类型
         case REACT_PORTAL_TYPE:
           return placeSingleChild(
             reconcileSinglePortal(
